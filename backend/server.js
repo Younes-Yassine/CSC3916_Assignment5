@@ -22,12 +22,16 @@ mongoose
 
 const app = express();
 
-// CORS configuration to allow your Render‑hosted frontend
+// *** CORS Setup ***
+// Allow your Render‑hosted frontend to access these APIs
 const corsOptions = {
   origin: 'https://csc3916-assignment5-frontend.onrender.com',
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization']
 };
+// Handle preflight for all routes
+app.options('*', cors(corsOptions));
+// Apply CORS to all endpoints
 app.use(cors(corsOptions));
 
 app.use(bodyParser.json());
@@ -75,13 +79,13 @@ app.post('/reviews', authJwt.isAuthenticated, async (req, res) => {
   }
   try {
     await new Review({ movieId, username, review, rating }).save();
-    // fire-and-forget analytics
+    // Analytics fire‑and‑forget
     Movie.findById(movieId).then(movie => {
       if (movie) {
         trackEvent(
           movie.genre || 'Unknown',
           'POST /reviews',
-          'Review',
+          'Review created',
           1,
           movie.title,
           1
@@ -135,34 +139,23 @@ app.get('/movies', authJwt.isAuthenticated, async (req, res) => {
   }
 });
 
-// Detailed movie endpoint with reviews & avgRating
+// Detailed movie endpoint
 app.get('/movies/:id', authJwt.isAuthenticated, async (req, res) => {
   const { id } = req.params;
   try {
-    // 1) Fetch the movie document
     const movie = await Movie.findById(id).lean();
     if (!movie) {
       return res.status(404).json({ error: 'Movie not found' });
     }
-
-    // 2) Fetch associated reviews
     const reviews = await Review.find({ movieId: id }).lean();
-
-    // 3) Compute average rating
     const avgRating =
       reviews.length > 0
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
         : null;
-
-    // 4) Merge into payload
     movie.reviews   = reviews;
     movie.avgRating = avgRating;
-
-    // 5) Return result
     return res.json(movie);
-
   } catch (err) {
-    // Handle invalid ObjectId
     if (err.name === 'CastError') {
       return res.status(400).json({ error: 'Invalid movie id' });
     }
