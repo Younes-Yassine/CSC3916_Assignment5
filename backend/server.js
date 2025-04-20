@@ -21,7 +21,15 @@ mongoose
   .catch(err => console.error('MongoDB connection error:', err));
 
 const app = express();
-app.use(cors());
+
+// CORS configuration to allow your Render‑hosted frontend
+const corsOptions = {
+  origin: 'https://csc3916-assignment5-frontend.onrender.com',
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
+};
+app.use(cors(corsOptions));
+
 app.use(bodyParser.json());
 app.use(passport.initialize());
 
